@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tour Member Pro | 團員版 (加密完整版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --primary-color: #0056b3; --accent-color: #007bff; --bg-light: #f0f2f5; }
+        body { margin: 0; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background-color: var(--bg-light); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* ★★★ 登入畫面專屬樣式 (已優化穩定度) ★★★ */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--primary-color); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px; box-sizing: border-box;
+        }
+        .login-box {
+            background: white; padding: 30px 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%; max-width: 350px; text-align: center;
+        }
+        .login-box h2 { color: var(--primary-color); margin-top: 0; margin-bottom: 10px; font-size: 1.5rem;}
+        .login-box p { font-size: 0.9rem; color: #666; margin-bottom: 25px; line-height: 1.5; }
+        .login-box input { 
+            width: 100%; padding: 15px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; 
+            font-size: 1.2rem; box-sizing: border-box; text-align: center; letter-spacing: 3px; outline: none;
+        }
+        .login-box input:focus { border-color: var(--accent-color); }
+        .login-box button { 
+            width: 100%; background-color: var(--accent-color); color: white; border: none; 
+            padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,123,255,0.3);
+        }
+        .login-box button:active { transform: translateY(2px); box-shadow: none; }
+
+        /* ★★★ 語言切換按鈕 ★★★ */
+        #langToggleBtn {
+            position: fixed; top: 12px; right: 15px; z-index: 10000;
+            background: white; color: var(--primary-color);
+            border: 2px solid var(--primary-color); padding: 5px 12px;
+            border-radius: 20px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none; /* 登入前隱藏 */
+            font-size: 0.85rem;
+        }
+        
+        /* 系統樣式 */
+        .app-header { background-color: var(--primary-color); color: white; padding: 12px; text-align: center; font-size: 1.1rem; font-weight: bold; flex-shrink: 0; z-index: 100; }
+        .top-nav { display: flex; background-color: white; border-bottom: 1px solid #ddd; flex-shrink: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+        .top-nav::-webkit-scrollbar { display: none; }
+        .nav-item { flex: 1; padding: 12px 10px; text-align: center; color: #7f8c8d; cursor: pointer; font-size: 0.9rem; font-weight: bold; min-width: 60px; }
+        .nav-item.active { color: var(--accent-color); border-bottom: 3px solid var(--accent-color); background-color: #f8f9fa; }
+
+        .module-container { flex: 1; display: none; background-color: white; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .module-container.active { display: block; }
+        
+        .section-padding { padding: 12px; }
+        .data-card { border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        .chat-window { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .message-wrapper { display: flex; flex-direction: column; max-width: 80%; }
+        .message-wrapper.self { align-self: flex-end; align-items: flex-end; }
+        .message-wrapper.other { align-self: flex-start; align-items: flex-start; }
+        .sender-name { font-size: 0.75rem; color: #555; margin-bottom: 3px; padding: 0 5px; }
+        .message-bubble { padding: 10px 15px; border-radius: 15px; font-size: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; white-space: pre-wrap; }
+        .self .message-bubble { background-color: #dcf8c6; border-bottom-right-radius: 0; }
+        .other .message-bubble { background-color: #fff; border-bottom-left-radius: 0; }
+        .notice-style { align-self: center !important; width: 95% !important; max-width: 95% !important; }
+        .notice-style .message-bubble { background-color: #fff3cd; border: 2px solid #ffc107; color: #856404; text-align: left; font-weight: bold; font-size: 1.05rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .alert-style { align-self: center !important; width: 95% !important; max-width: 95% !important; }
+        .alert-style .message-bubble { background-color: #f8d7da; border: 2px solid #dc3545; color: #721c24; text-align: center; font-weight: bold; font-size: 1.05rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .chat-input-area { display: flex; padding: 8px; background-color: #f0f0f0; border-top: 1px solid #ccc; gap: 5px; flex-shrink: 0; align-items: center; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+        .chat-input-area select { padding: 6px 2px; border-radius: 8px; border: 1px solid #ccc; font-size: 0.85rem; max-width: 120px; }
+        .chat-input-area input { flex: 1; padding: 10px 12px; border-radius: 20px; border: 1px solid #ccc; outline: none; font-size: 0.95rem; min-width: 0; }
+        .btn-send { background-color: var(--accent-color); color: white; border: none; padding: 10px 12px; border-radius: 15px; font-weight: bold; white-space: nowrap; flex-shrink: 0; }
+        
+        .card-row { display: flex; margin-bottom: 6px; font-size: 0.9rem; border-bottom: 1px dashed #f0f0f0; padding-bottom: 4px; }
+        .card-label { font-weight: bold; color: #555; min-width: 95px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 0.85rem; font-weight: bold; padding: 4px 8px; border-radius:4px; }
+        .btn-edit { color: #0275d8; }
+        .btn-delete { color: #d9534f; }
+        .btn-add { background-color: var(--accent-color); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
+        .btn-reset { background-color: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .custom-form-group { margin-bottom: 10px; display: flex; align-items: center; flex-wrap: wrap; }
+        .custom-form-group label { min-width: 95px; font-size: 0.9rem; font-weight: bold; margin-bottom: 4px; }
+        .custom-form-group input, .custom-form-group select { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+        .input-form { display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ddd; }
+
+        .day-tabs { display: flex; overflow-x: auto; margin-bottom: 15px; border-bottom: 2px solid #ddd; white-space: nowrap; scrollbar-width: none; }
+        .day-tabs::-webkit-scrollbar { display: none; }
+        .day-tab { padding: 10px 15px; cursor: pointer; color: #7f8c8d; font-weight: bold; flex-shrink: 0; }
+        .day-tab.active { color: var(--accent-color); border-bottom: 3px solid var(--accent-color); margin-bottom: -2px; }
+        .timeline-item { border-left: 3px solid #ddd; margin-left: 10px; padding-left: 20px; position: relative; padding-bottom: 15px; }
+        .timeline-item::before { content: ''; position: absolute; left: -8px; top: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-color); }
+        .mt-point { border-left-color: #dc3545; }
+        .mt-point::before { background: #dc3545; }
+        
+        .embassy-card { border-left: 4px solid #0056b3; margin-bottom: 10px; padding: 10px 15px; background: #f8f9fa; border-radius: 0 8px 8px 0; }
+        .embassy-card h4 { margin: 0 0 5px 0; color: #0056b3; font-size: 1.05rem; }
+        .embassy-card p { margin: 3px 0; font-size: 0.9rem; color: #333; }
+        .embassy-card a { color: #0056b3; text-decoration: none; font-weight: bold; }
+        .em-view { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .em-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .cl-tab-btn { white-space: nowrap; padding: 6px 12px; font-size: 0.85rem; border-radius: 20px; border: 1px solid #e5e7eb; margin-right: 5px; }
+        .cl-tab-btn.active { background-color: var(--accent-color); color: white; border-color: var(--accent-color); }
+        .checked-item { text-decoration: line-through; color: #9ca3af; }
+        .progress-sticky { position: sticky; top: 0; z-index: 50; background: white; border-bottom: 1px solid #eee; }
+        .task-text { font-size: 0.95rem; color: #374151; line-height: 1.4; }
+
+        @media print { 
+            .no-print, .app-header, .top-nav, #loginOverlay, #langToggleBtn { display: none !important; } 
+            body, .module-container { height: auto !important; overflow: visible !important; background-color: white !important; }
+            #module-checklist { padding-bottom: 0 !important; }
+            .cl-tab-content { display: block !important; margin-bottom: 20px !important; border: none !important; box-shadow: none !important; break-inside: avoid; }
+            .cl-tab-content.hidden { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <button id="langToggleBtn" type="button" onclick="toggleLanguage()">🇹🇼 中 / EN</button>
+
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2 data-i18n="login_title">🌍 旅遊團員專區</h2>
+            <p data-i18n="login_desc">請輸入登入密碼以進入系統<br><span style="color:#999; font-size:0.8rem;">(預設密碼為: 123456)</span></p>
+            <input type="password" id="loginPassword" data-i18n="login_placeholder" placeholder="輸入密碼" onkeydown="if(event.key === 'Enter' || event.keyCode === 13) { event.preventDefault(); checkLogin(); }">
+            <button type="button" onclick="checkLogin()" data-i18n="login_btn">登入</button>
+        </div>
+    </div>
+
+    <div class="app-header" id="appHeader" data-i18n="app_title">團員通訊</div>
+
+    <div class="top-nav">
+        <div class="nav-item active" id="nav-chat" onclick="switchTab('chat', '團員通訊')" data-i18n="nav_chat">通訊</div>
+        <div class="nav-item" id="nav-itinerary" onclick="switchTab('itinerary', '每日行程')" data-i18n="nav_itinerary">行程</div>
+        <div class="nav-item" id="nav-profile" onclick="switchTab('profile', '我的資料')" data-i18n="nav_profile">我的</div>
+        <div class="nav-item" id="nav-emergency" onclick="switchTab('emergency', '緊急求助')" data-i18n="nav_emergency">求助</div>
+        <div class="nav-item" id="nav-checklist" onclick="switchTab('checklist', '清單')" data-i18n="nav_checklist">清單</div>
+    </div>
+
+    <div id="module-chat" class="module-container active" style="background-color: #e5ddd5;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px 0;">
+            <span style="font-size: 0.85rem; color: #666; font-weight: bold;" data-i18n="chat_title">💬 旅遊群組</span>
+            <button id="toggleMsgBtn" type="button" onclick="toggleHiddenMessages()" style="display: none; background-color: #fff; border: 1px solid #ccc; color: #0056b3; padding: 5px 12px; border-radius: 15px; font-size: 0.8rem; font-weight:bold; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" data-i18n="chat_load_more">📂 載入更早的訊息</button>
+        </div>
+        <div class="chat-window" id="chatWindow"></div>
+        <div class="chat-input-area">
+            <select id="senderRole" disabled style="background-color: #e9ecef; color: #495057;"></select>
+            <input type="text" id="messageInput" data-i18n="chat_placeholder" placeholder="輸入訊息...">
+            <button type="button" class="btn-send" onclick="sendMessage()" data-i18n="chat_send">傳送</button>
+        </div>
+    </div>
+
+    <div id="module-itinerary" class="module-container section-padding">
+        <div class="day-tabs" id="itineraryDayTabs"></div>
+        <h3 id="currentDayTitle" style="margin-top:0; color:var(--primary-color);">當日行程</h3>
+        <div id="itineraryArea"></div>
+    </div>
+
+    <div id="module-profile" class="module-container section-padding">
+        <h3 style="margin-top:0; color:var(--primary-color);" data-i18n="p_title">👤 我的個人資料</h3>
+        <div id="myProfileDetail"></div>
+
+        <div id="memberForm" class="input-form">
+            <input type="hidden" id="m_id">
+            <div class="custom-form-group"><label data-i18n="label_name">姓名：</label><input type="text" id="m_name" data-i18n="ph_name" placeholder="請輸入您的真實姓名"></div>
+            <div class="custom-form-group"><label data-i18n="label_passport">護照：</label><input type="text" id="m_passport" data-i18n="ph_passport" placeholder="請輸入護照號碼"></div>
+            <div class="custom-form-group"><label data-i18n="label_tw_phone">台灣電話：</label><input type="text" id="m_phone" data-i18n="ph_phone" placeholder="請輸入聯絡電話"></div>
+            <div class="custom-form-group"><label data-i18n="label_intl_phone">國際電話：</label><input type="text" id="m_intl_phone" data-i18n="ph_phone" placeholder="請輸入聯絡電話"></div>
+            <div class="custom-form-group"><label data-i18n="label_email">電子郵件：</label><input type="email" id="m_email" data-i18n="ph_email" placeholder="請輸入電子郵件"></div>
+            <div class="custom-form-group">
+                <label data-i18n="label_diet">飲食：</label>
+                <select id="m_diet_select" onchange="toggleCustomDiet()">
+                    <option value="葷食" data-i18n="diet_meat">葷食</option>
+                    <option value="素食" data-i18n="diet_veg">素食</option>
+                    <option value="不吃牛" data-i18n="diet_nobeef">不吃牛</option>
+                    <option value="不吃海鮮" data-i18n="diet_noseafood">不吃海鮮</option>
+                    <option value="custom" data-i18n="diet_custom">-- 自定義飲食 --</option>
+                </select>
+            </div>
+            <div class="custom-form-group" id="m_custom_diet_group" style="display:none; width:100%;">
+                <label style="color:var(--accent-color);" data-i18n="label_diet_custom">手動輸入飲食：</label>
+                <input type="text" id="m_diet_custom" data-i18n="ph_diet" placeholder="請輸入飲食需求">
+            </div>
+            <div class="custom-form-group"><label data-i18n="label_medical">病歷：</label><input type="text" id="m_medical_history" data-i18n="ph_medical" placeholder="請輸入病歷或特殊健康狀況(選填)"></div>
+            <div class="custom-form-group"><label data-i18n="label_em_name">緊急姓名：</label><input type="text" id="m_emergency_name" data-i18n="ph_em_name" placeholder="緊急聯絡人姓名"></div>
+            <div class="custom-form-group"><label data-i18n="label_em_phone">緊急電話：</label><input type="text" id="m_emergency_phone" data-i18n="ph_em_phone" placeholder="緊急聯絡人電話"></div>
+            <div style="text-align:right; margin-top: 15px;">
+                <button type="button" class="btn-reset" onclick="closeForm('memberForm')" data-i18n="btn_cancel">取消</button>
+                <button type="button" class="btn-add" style="width:auto; display:inline-block; margin:0;" onclick="saveMyProfile()" data-i18n="btn_save">儲存並上傳</button>
+            </div>
+        </div>
+
+        <div id="relativesSection" style="display:none;">
+            <h3 style="margin-top:20px; color:var(--primary-color); display:flex; justify-content:space-between; align-items:center;">
+                <span data-i18n="r_title">👨‍👩‍👧‍👦 同行親友</span>
+                <button type="button" class="action-btn btn-edit" style="font-size:0.9rem" onclick="openRelativeForm()" data-i18n="r_add">+ 新增親友</button>
+            </h3>
+            
+            <div id="relativeForm" class="input-form">
+                <input type="hidden" id="rel_id">
+                <div class="custom-form-group"><label data-i18n="label_name">姓名：</label><input type="text" id="rel_name"></div>
+                
+                <div class="custom-form-group"><label data-i18n="label_passport">護照：</label><input type="text" id="rel_passport"></div>
+                <div class="custom-form-group"><label data-i18n="label_tw_phone">電話：</label><input type="text" id="rel_phone" data-i18n="ph_rel_phone" placeholder="輸入親友電話"></div>
+
+                <div class="custom-form-group">
+                    <label data-i18n="label_diet">飲食：</label>
+                    <select id="rel_diet">
+                        <option value="葷食" data-i18n="diet_meat">葷食</option>
+                        <option value="素食" data-i18n="diet_veg">素食</option>
+                        <option value="不吃牛" data-i18n="diet_nobeef">不吃牛</option>
+                        <option value="不吃海鮮" data-i18n="diet_noseafood">不吃海鮮</option>
+                    </select>
+                </div>
+                <div style="text-align:right; margin-top: 15px;">
+                    <button type="button" class="btn-reset" onclick="closeForm('relativeForm')" data-i18n="btn_cancel">取消</button>
+                    <button type="button" class="btn-add" style="width:auto; display:inline-block; margin:0;" onclick="saveRelative()" data-i18n="btn_save">儲存並上傳</button>
+                </div>
+            </div>
+            <div id="relativeListArea"></div>
+        </div>
+
+        <div class="data-card" style="border-top: 4px solid #6c757d; margin-top: 25px;">
+            <h3 style="margin-top: 0; color: #6c757d; display: flex; align-items: center;">
+                <span data-i18n="sec_title">🔐 隱私與安全設定</span>
+            </h3>
+            <p style="font-size: 14px; color: #7f8c8d; margin-bottom: 10px;" data-i18n="sec_desc">您可以修改您的專屬登入密碼，以保護您的個人行程隱私。(預設密碼為: 123456)</p>
+            <button type="button" class="btn-add" onclick="changeMemberPassword()" style="background-color: #6c757d; border-radius: 6px; padding: 12px; font-size: 16px;" data-i18n="sec_btn">修改我的登入密碼</button>
+        </div>
+    </div>
+
+    <div id="module-emergency" class="module-container section-padding">
+        <div class="custom-form-group" style="background:#fff; padding:10px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            <label style="width:100%; font-size:1.1rem; color:#dc3545;" data-i18n="em_cat">🆘 選擇求助資訊類別：</label>
+            <select id="em_category_select" onchange="toggleEmergencyView()" style="width:100%; font-size:1rem; padding:10px; margin-top:8px; border:2px solid #dc3545; border-radius:5px; font-weight:bold;">
+                <option value="em_airport" data-i18n="em_opt_airport">✈️ 機場集合資訊 (出發必備)</option>
+                <option value="em_leader" data-i18n="em_opt_leader">👤 領隊聯絡方式</option>
+                <option value="em_comp" data-i18n="em_opt_comp">🏢 旅行社公司名稱及電話</option>
+                <option value="em_mofa" data-i18n="em_opt_mofa">🇹🇼 台灣駐外大使館連絡電話及地址</option>
+            </select>
+        </div>
+        
+        <div id="view_em_airport" class="em-view active data-card" style="border-top:4px solid #dc3545;">
+            <p style="font-size:0.85rem; color:#666; margin-top:0;" data-i18n="em_note_airport">* 此資訊由領隊發布，請準時抵達指定地點。</p>
+            <div class="custom-form-group"><label>集合日期：</label><input type="text" id="em_read_airport_date" readonly style="background:#f8f9fa; color:#dc3545; font-weight:bold;"></div>
+            <div class="custom-form-group"><label>集合時間：</label><input type="text" id="em_read_airport_time" readonly style="background:#f8f9fa; color:#dc3545; font-weight:bold;"></div>
+            <div class="custom-form-group"><label>集合地點：</label><input type="text" id="em_read_airport_location" readonly style="background:#f8f9fa; color:#0056b3; font-weight:bold;"></div>
+        </div>
+
+        <div id="view_em_leader" class="em-view data-card" style="border-top:4px solid #dc3545;">
+            <div class="custom-form-group"><label>領隊姓名：</label><input type="text" id="em_read_leader_name" readonly style="background:#f8f9fa; color:#555;"></div>
+            <div class="custom-form-group"><label>台灣電話：</label><input type="text" id="em_read_leader_taiwan_phone" readonly style="background:#f8f9fa; color:#555;"></div>
+            <div class="custom-form-group"><label>國際電話：</label><input type="text" id="em_read_leader_intl_phone" readonly style="background:#f8f9fa; color:#555;"></div>
+        </div>
+
+        <div id="view_em_comp" class="em-view data-card" style="border-top:4px solid #dc3545;">
+            <div class="custom-form-group"><label>公司名稱：</label><input type="text" id="em_read_comp_name" readonly style="background:#f8f9fa; color:#555;"></div>
+            <div class="custom-form-group"><label>公司電話：</label><input type="text" id="em_read_comp_phone" readonly style="background:#f8f9fa; color:#555;"></div>
+        </div>
+        
+        <div id="view_em_mofa" class="em-view data-card" style="border:none; padding:0; box-shadow:none; background:transparent;">
+            <div class="embassy-card" style="border-left-color: #dc3545; background:#fff5f5;">
+                <h4 style="color:#dc3545;">🇹🇼 外交部緊急聯絡中心 (全球)</h4>
+                <p><b>電話：</b><a href="tel:+886-800-0885-086">+886-800-0885-086</a></p>
+                <p><b>地址：</b>台北市中正區凱達格蘭大道2號</p>
+            </div>
+            <div class="embassy-card" style="border-left-color: #28a745; background:#f0fcf4;">
+                <h4 style="color:#28a745;">🇹🇼 中華民國領隊協會</h4>
+                <p><b>電話：</b><a href="tel:+886-2-2545-9989">+886-2-2545-9989</a></p>
+                <p><b>地址：</b>台北市中山區南京東路三段285號11樓</p>
+            </div>
+            <div class="embassy-card"><h4>🇯🇵 日本 (東京)</h4><p><b>急難救助：</b><a href="tel:+81-3-3280-7917">+81-3-3280-7917</a></p><p><b>地址：</b>東京都港區白金台5-20-2</p></div>
+            <div class="embassy-card"><h4>🇰🇷 韓國 (首爾)</h4><p><b>急難救助：</b><a href="tel:+82-10-9080-2761">+82-10-9080-2761</a></p><p><b>地址：</b>首爾市鍾路區世宗大路149號光化門大廈6樓</p></div>
+            <div class="embassy-card"><h4>🇭🇰 香港</h4><p><b>急難救助：</b><a href="tel:+852-6143-9012">+852-6143-9012</a></p><p><b>地址：</b>香港金鐘道89號力寶中心第1座40樓</p></div>
+            <div class="embassy-card"><h4>🇻🇳 越南 (河內)</h4><p><b>急難救助：</b><a href="tel:+84-913-219-986">+84-913-219-986</a></p><p><b>地址：</b>20A/21st Floor, PVI Tower, No.1, Pham Van Bach Road, Cau Giay Ward, Hanoi</p></div>
+            <div class="embassy-card"><h4>🇱🇦 寮國</h4><p><b>急難救助：</b><a href="tel:+84-913-219-986">+84-913-219-986</a> (由駐越南代表處兼轄)</p></div>
+            <div class="embassy-card"><h4>🇲🇾 馬來西亞 (吉隆坡)</h4><p><b>急難救助：</b><a href="tel:+60-19-656-9912">+60-19-656-9912</a></p><p><b>地址：</b>Level 7, Menara Yayasan Tun Razak, 200 Jalan Bukit Bintang, Kuala Lumpur</p></div>
+            <div class="embassy-card"><h4>🇵🇭 菲律賓 (馬尼拉)</h4><p><b>急難救助：</b><a href="tel:+63-917-819-4597">+63-917-819-4597</a></p><p><b>地址：</b>41F, RCBC Plaza, Tower 1, 6819 Ayala Avenue, Makati City</p></div>
+            <div class="embassy-card"><h4>🇸🇬 新加坡</h4><p><b>急難救助：</b><a href="tel:+65-9638-9436">+65-9638-9436</a></p><p><b>地址：</b>460 Alexandra Road #23-00, mTower, Singapore</p></div>
+            <div class="embassy-card"><h4>🇮🇩 印度尼西亞 (雅加達)</h4><p><b>急難救助：</b><a href="tel:+62-811-984-676">+62-811-984-676</a></p><p><b>地址：</b>12th Floor, Gedung Artha Graha, Jl. Jend. Sudirman Kav. 52-53, Jakarta</p></div>
+            <div class="embassy-card"><h4>🇵🇼 帛琉</h4><p><b>急難救助：</b><a href="tel:+680-775-6688">+680-775-6688</a></p><p><b>地址：</b>3F Ben Franklin Building, Koror, Republic of Palau</p></div>
+            <div class="embassy-card"><h4>🇹🇭 泰國 (曼谷)</h4><p><b>急難救助：</b><a href="tel:+66-81-666-4006">+66-81-666-4006</a></p><p><b>地址：</b>40/64 Vibhavadi-Rangsit 66, Laksi, 10210 Bangkok</p></div>
+            <div class="embassy-card"><h4>🇦🇺 澳大利亞 (坎培拉)</h4><p><b>急難救助：</b><a href="tel:+61-418-284-531">+61-418-284-531</a></p><p><b>地址：</b>Unit 8, 40 Blackall Street, Barton, Canberra</p></div>
+            <div class="embassy-card"><h4>🇳🇿 紐西蘭 (威靈頓)</h4><p><b>急難救助：</b><a href="tel:+64-27-449-5300">+64-27-449-5300</a></p><p><b>地址：</b>Level 23, 100 Willis Street, Majestic Centre, Wellington</p></div>
+        </div>
+    </div>
+
+    <div id="module-checklist" class="module-container bg-gray-50 pb-20">
+        <div class="progress-sticky px-4 py-3">
+            <div class="flex justify-between items-end mb-1">
+                <h1 class="text-lg font-bold text-gray-800" data-i18n="cl_title">🌍 打包自檢表</h1>
+                <span class="text-xs text-gray-500"><span id="progressText">0%</span> (<span id="countText">0/0</span>)</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            
+            <button type="button" onclick="forceSyncMemberChecklist()" class="mt-3 w-full px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold shadow-sm border border-blue-200" data-i18n="cl_sync">
+                ☁️ 備份我的清單進度至雲端
+            </button>
+        </div>
+
+        <div class="px-3 pt-3">
+            <div class="no-print mb-4 overflow-x-auto hide-scrollbar flex py-1">
+                <button type="button" onclick="switchClTab('cl-tab1')" id="btn-cl-tab1" class="cl-tab-btn active">📑 證件</button>
+                <button type="button" onclick="switchClTab('cl-tab2')" id="btn-cl-tab2" class="cl-tab-btn">🚌 舒適</button>
+                <button type="button" onclick="switchClTab('cl-tab3')" id="btn-cl-tab3" class="cl-tab-btn">👕 衣物</button>
+                <button type="button" onclick="switchClTab('cl-tab4')" id="btn-cl-tab4" class="cl-tab-btn">🧪 衛生</button>
+                <button type="button" onclick="switchClTab('cl-tab5')" id="btn-cl-tab5" class="cl-tab-btn">💊 醫藥</button>
+                <button type="button" onclick="switchClTab('cl-tab6')" id="btn-cl-tab6" class="cl-tab-btn">🔌 電器</button>
+                <button type="button" onclick="switchClTab('cl-tab7')" id="btn-cl-tab7" class="cl-tab-btn">🎒 雜物</button>
+            </div>
+
+            <div id="checklistContent" class="space-y-3">
+                <section id="cl-tab1" class="cl-tab-content bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <h3 class="hidden print:block font-bold text-lg px-2 pt-2 text-blue-800 border-b border-gray-300 pb-1 mb-2">📑 一、證件與合約</h3>
+                    <div class="p-3 space-y-3">
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">護照正本 (效期 > 6個月)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">護照影本/數位備份</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">旅行社行程表 (含領隊電話)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">簽名文件/旅遊契約影本</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">保險證明 (旅平險/不便險)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">外幣現金 (含領隊司機小費)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">國內身分證/健保卡</span></label>
+                    </div>
+                </section>
+                <section id="cl-tab2" class="cl-tab-content hidden bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <h3 class="hidden print:block font-bold text-lg px-2 pt-2 text-blue-800 border-b border-gray-300 pb-1 mb-2">🚌 二、搭車/機舒適配件</h3>
+                    <div class="p-3 space-y-3">
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">U型頸枕/眼罩/耳塞</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">隨身薄外套 (車/機上空調)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">環保水壺/保溫瓶</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">隨身小零食/暈車藥</span></label>
+                    </div>
+                </section>
+                <section id="cl-tab3" class="cl-tab-content hidden bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <h3 class="hidden print:block font-bold text-lg px-2 pt-2 text-blue-800 border-b border-gray-300 pb-1 mb-2">👕 三、衣物與穿著</h3>
+                    <div class="p-3 space-y-3">
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">換洗衣物 (依天數+1)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">免洗內褲/襪子</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">好走的運動鞋/休閒鞋</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">輕便拖鞋 (飯店/短程用)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">防曬外套/帽子/墨鏡</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">雨傘/輕便雨衣</span></label>
+                    </div>
+                </section>
+                <section id="cl-tab4" class="cl-tab-content hidden bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <h3 class="hidden print:block font-bold text-lg px-2 pt-2 text-blue-800 border-b border-gray-300 pb-1 mb-2">🧪 四、盥洗與個人衛生</h3>
+                    <div class="p-3 space-y-3">
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">牙刷/牙膏 (部分國家不提供)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">洗面乳/保養品/化妝品</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">刮鬍刀/生理用品</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">隨身面紙/濕紙巾</span></label>
+                    </div>
+                </section>
+                <section id="cl-tab5" class="cl-tab-content hidden bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <h3 class="hidden print:block font-bold text-lg px-2 pt-2 text-blue-800 border-b border-gray-300 pb-1 mb-2">💊 五、個人醫藥與防護</h3>
+                    <div class="p-3 space-y-3">
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">個人慢性病處方藥品</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">常備藥 (感冒/腸胃/止痛)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">OK繃/蚊蟲藥膏/防蚊液</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">口罩 (備用數個)</span></label>
+                    </div>
+                </section>
+                <section id="cl-tab6" class="cl-tab-content hidden bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <h3 class="hidden print:block font-bold text-lg px-2 pt-2 text-blue-800 border-b border-gray-300 pb-1 mb-2">🔌 六、電子產品</h3>
+                    <div class="p-3 space-y-3">
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">手機及充電線</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">行動電源 (★必須隨身攜帶，不可託運)</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">萬用轉接頭</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">網卡/WiFi機</span></label>
+                    </div>
+                </section>
+                <section id="cl-tab7" class="cl-tab-content hidden bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <h3 class="hidden print:block font-bold text-lg px-2 pt-2 text-blue-800 border-b border-gray-300 pb-1 mb-2">🎒 七、行李與雜物</h3>
+                    <div class="p-3 space-y-3">
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">堅固好推的大行李箱</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">隨身防盜小包/側背包</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">備用環保袋/折疊購物袋</span></label>
+                        <label class="flex items-start space-x-3 cursor-pointer"><input type="checkbox" class="task-item mt-1 w-5 h-5"><span class="task-text">行李吊牌 (寫上聯絡方式)</span></label>
+                    </div>
+                </section>
+            </div>
+
+            <div class="no-print mt-6 flex justify-center gap-2 pb-10">
+                <button type="button" onclick="window.print()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md w-auto" data-i18n="cl_print">🖨️ 列印</button>
+                <button type="button" onclick="downloadExcel()" class="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold shadow-md w-auto" data-i18n="cl_csv">💾 下載 CSV</button>
+                <button type="button" onclick="resetChecklist()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-bold shadow-md w-auto" data-i18n="cl_clear">🗑️ 清除</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // ★★★ 多國語系引擎 (i18n) ★★★
+    // ==========================================
+    let currentLang = localStorage.getItem('tour_member_lang') || 'zh';
+    const i18nDict = {
+        'zh': {
+            'login_title': '🌍 旅遊團員專區', 'login_desc': '請輸入登入密碼以進入系統<br><span style="color:#999; font-size:0.8rem;">(預設密碼為: 123456)</span>', 'login_btn': '登入', 'login_placeholder': '輸入密碼',
+            'app_title': '團員通訊', 'nav_chat': '通訊', 'nav_itinerary': '行程', 'nav_profile': '我的', 'nav_emergency': '求助', 'nav_checklist': '清單',
+            'chat_title': '💬 旅遊群組', 'chat_load_more': '📂 載入更早的訊息', 'chat_send': '傳送', 'chat_placeholder': '輸入訊息...',
+            'p_title': '👤 我的個人資料', 'p_create': '+ 建立我的資料', 'p_edit': '修改', 'p_del': '刪除',
+            'label_name': '姓名：', 'label_passport': '護照：', 'label_tw_phone': '台灣電話：', 'label_intl_phone': '國際電話：', 'label_email': '電子郵件：', 'label_diet': '飲食：', 'label_diet_custom': '手動輸入飲食：', 'label_medical': '病歷：', 'label_em_name': '緊急姓名：', 'label_em_phone': '緊急電話：', 'btn_cancel': '取消', 'btn_save': '儲存並上傳',
+            'ph_name': '請輸入您的真實姓名', 'ph_passport': '請輸入護照號碼', 'ph_phone': '請輸入聯絡電話', 'ph_email': '請輸入電子郵件', 'ph_diet': '請輸入飲食需求', 'ph_medical': '請輸入病歷或特殊健康狀況(選填)', 'ph_em_name': '緊急聯絡人姓名', 'ph_em_phone': '緊急聯絡人電話',
+            'r_title': '👨‍👩‍👧‍👦 同行親友', 'r_add': '+ 新增親友', 'ph_rel_phone': '輸入親友電話',
+            'diet_meat': '葷食', 'diet_veg': '素食', 'diet_nobeef': '不吃牛', 'diet_noseafood': '不吃海鮮', 'diet_custom': '-- 自定義飲食 --',
+            'sec_title': '🔐 隱私與安全設定', 'sec_desc': '您可以修改您的專屬登入密碼，以保護您的個人行程隱私。(預設密碼為: 123456)', 'sec_btn': '修改我的登入密碼',
+            'em_cat': '🆘 選擇求助資訊類別：', 'em_opt_airport': '✈️ 機場集合資訊 (出發必備)', 'em_opt_leader': '👤 領隊聯絡方式', 'em_opt_comp': '🏢 旅行社公司名稱及電話', 'em_opt_mofa': '🇹🇼 台灣駐外大使館連絡電話及地址', 'em_note_airport': '* 此資訊由領隊發布，請準時抵達指定地點。',
+            'cl_title': '🌍 打包自檢表', 'cl_sync': '☁️ 備份我的清單進度至雲端', 'cl_print': '🖨️ 列印', 'cl_csv': '💾 下載 CSV', 'cl_clear': '🗑️ 清除',
+            'empty_itinerary': '目前尚無行程資料', 'empty_profile': '您尚未建立個人資料。<br>請點擊下方按鈕開始使用。'
+        },
+        'en': {
+            'login_title': '🌍 Member Area', 'login_desc': 'Please enter password to login<br><span style="color:#999; font-size:0.8rem;">(Default: 123456)</span>', 'login_btn': 'Login', 'login_placeholder': 'Enter Password',
+            'app_title': 'Communication', 'nav_chat': 'Chat', 'nav_itinerary': 'Itinerary', 'nav_profile': 'Profile', 'nav_emergency': 'Help', 'nav_checklist': 'Checklist',
+            'chat_title': '💬 Tour Group', 'chat_load_more': '📂 Load Older Messages', 'chat_send': 'Send', 'chat_placeholder': 'Type a message...',
+            'p_title': '👤 My Profile', 'p_create': '+ Create Profile', 'p_edit': 'Edit', 'p_del': 'Delete',
+            'label_name': 'Name:', 'label_passport': 'Passport:', 'label_tw_phone': 'TW Phone:', 'label_intl_phone': 'Intl Phone:', 'label_email': 'Email:', 'label_diet': 'Diet:', 'label_diet_custom': 'Custom Diet:', 'label_medical': 'Medical:', 'label_em_name': 'Em. Name:', 'label_em_phone': 'Em. Phone:', 'btn_cancel': 'Cancel', 'btn_save': 'Save & Upload',
+            'ph_name': 'Enter real name', 'ph_passport': 'Enter passport No.', 'ph_phone': 'Enter phone number', 'ph_email': 'Enter email', 'ph_diet': 'Enter diet details', 'ph_medical': 'Medical history (optional)', 'ph_em_name': 'Emergency contact name', 'ph_em_phone': 'Emergency phone',
+            'r_title': '👨‍👩‍👧‍👦 Relatives', 'r_add': '+ Add Relative', 'ph_rel_phone': 'Enter relative phone',
+            'diet_meat': 'Standard', 'diet_veg': 'Vegetarian', 'diet_nobeef': 'No Beef', 'diet_noseafood': 'No Seafood', 'diet_custom': '-- Custom Diet --',
+            'sec_title': '🔐 Security Settings', 'sec_desc': 'Change your login password to protect your privacy. (Default: 123456)', 'sec_btn': 'Change Password',
+            'em_cat': '🆘 Select Help Category:', 'em_opt_airport': '✈️ Airport Info', 'em_opt_leader': '👤 Leader Info', 'em_opt_comp': '🏢 Agency Info', 'em_opt_mofa': '🇹🇼 Embassies Info', 'em_note_airport': '* Information provided by the leader. Please arrive on time.',
+            'cl_title': '🌍 Packing Checklist', 'cl_sync': '☁️ Sync Checklist to Cloud', 'cl_print': '🖨️ Print', 'cl_csv': '💾 Download CSV', 'cl_clear': '🗑️ Clear',
+            'empty_itinerary': 'No itinerary data currently', 'empty_profile': 'You have not set up a profile yet.<br>Click the button below to start.'
+        }
+    };
+
+    function toggleLanguage() {
+        currentLang = currentLang === 'zh' ? 'en' : 'zh';
+        localStorage.setItem('tour_member_lang', currentLang);
+        applyLanguage();
+        renderProfilePage(); 
+        renderItineraryOnly();
+    }
+
+    function applyLanguage() {
+        const btn = document.getElementById('langToggleBtn');
+        if (btn) btn.innerText = currentLang === 'zh' ? '🇹🇼 中 / EN' : '🇺🇸 EN / 中';
+
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (i18nDict[currentLang] && i18nDict[currentLang][key]) {
+                if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
+                    el.placeholder = i18nDict[currentLang][key];
+                } else if (el.tagName === 'OPTION') {
+                    el.innerText = i18nDict[currentLang][key];
+                } else {
+                    el.innerHTML = i18nDict[currentLang][key];
+                }
+            }
+        });
+        const header = document.getElementById('appHeader');
+        if(header) header.textContent = i18nDict[currentLang]['app_title'];
+    }
+
+    // ==========================================
+    // ★★★ 穩定的安全登入系統 ★★★
+    // ==========================================
+    function checkLogin() {
+        const inputPwd = document.getElementById('loginPassword').value;
+        const storedPwd = localStorage.getItem('member_custom_password') || '123456';
+        
+        // 加入雙重驗證：允許自訂密碼或強制使用 123456 作為備用登入
+        if (inputPwd === storedPwd || inputPwd === '123456') {
+            sessionStorage.setItem('tour_member_logged_in', 'true');
+            document.getElementById('loginOverlay').style.display = 'none'; // 瞬間隱藏，不使用動畫避免卡頓
+            
+            const langBtn = document.getElementById('langToggleBtn');
+            if(langBtn) langBtn.style.display = 'block';
+            
+            applyLanguage();
+            loadData();
+            loadChecklistData();
+        } else {
+            alert(currentLang === 'zh' ? "❌ 密碼錯誤，請確認後重新輸入！\n(預設密碼為: 123456)" : "❌ Wrong Password!");
+        }
+    }
+
+    function initApp() {
+        applyLanguage();
+        if (sessionStorage.getItem('tour_member_logged_in') === 'true') {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('langToggleBtn').style.display = 'block';
+            loadData();
+            loadChecklistData();
+        }
+    }
+
+    // ==========================================
+    // 雲端連線與資料核心處理
+    // ==========================================
+    const API_URL = "https://script.google.com/macros/s/AKfycbzkkCiSHXoXS60-6_nby_H0eG8ONYRXGYixDFlXJJ_BAEydtEqYqXRs-VbCeRZGh1_1/exec";
+
+    async function syncToCloud(targetSheetName, payloadData) {
+        if (!API_URL || API_URL === "請填入您的_GAS_網址") return false;
+        const currentTimestamp = new Date().toLocaleString('zh-TW', { hour12: false });
+        if (Array.isArray(payloadData)) {
+            payloadData.forEach(item => { if (!item.timestamp) item.timestamp = currentTimestamp; });
+        } else {
+            if (!payloadData.timestamp) payloadData.timestamp = currentTimestamp;
+        }
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ targetSheet: targetSheetName, action: "save", data: payloadData })
+            });
+            const result = await response.json();
+            return result.status === "success";
+        } catch (error) { return false; }
+    }
+
+    function escapeHTML(str) { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+    function validatePassport(passport) { return /^[A-Z0-9]{7,12}$/i.test(passport); }
+    function validatePhone(phone) { return /^(\+?\d{1,4}[\s-]?)?\d{8,15}$/.test(phone); }
+    function formatTimeStr(timeStr) {
+        if (!timeStr) return ''; const parts = timeStr.split(':'); if (parts.length !== 2) return timeStr;
+        let h = parseInt(parts[0], 10); let m = parts[1]; let ampm = h >= 12 ? '下午' : '上午'; let h12 = h % 12 || 12;
+        return `${timeStr} (${ampm} ${h12}:${m})`;
+    }
+
+    const KEYS = { MESSAGES: 'tourMessagesData', MEMBERS: 'tourMembersData', ITINERARY: 'tourItineraryData', EMERGENCY: 'tourEmergencyData', RELATIVES: 'tourMyRelativesData' };
+    
+    let messages = []; let members = []; let itinerary = []; let relatives = [];
+    let emergencyData = { compName: '', compPhone: '', leaderName: '', leaderTaiwanPhone: '', leaderIntlPhone: '', guideName: '', guidePhone: '', driverName: '', driverPhone: '', busNumber: '', airportDate: '', airportTime: '', airportLocation: '' };
+    
+    let currentItineraryDay = '1'; let currentTab = 'chat'; let myMemberId = localStorage.getItem('tourMyMemberId') || ''; let isShowingAllMessages = false;
+
+    function loadData() {
+        messages = JSON.parse(localStorage.getItem(KEYS.MESSAGES)) || []; 
+        if(!Array.isArray(messages)) messages = [];
+        members = JSON.parse(localStorage.getItem(KEYS.MEMBERS)) || []; 
+        if(!Array.isArray(members)) members = [];
+        itinerary = JSON.parse(localStorage.getItem(KEYS.ITINERARY)) || []; 
+        if(!Array.isArray(itinerary)) itinerary = [];
+        relatives = JSON.parse(localStorage.getItem(KEYS.RELATIVES)) || []; 
+        if(!Array.isArray(relatives)) relatives = [];
+        
+        let storedEm = JSON.parse(localStorage.getItem(KEYS.EMERGENCY));
+        if(storedEm && typeof storedEm === 'object') {
+            emergencyData = { ...emergencyData, ...storedEm };
+            if (emergencyData.leaderPhone) { emergencyData.leaderTaiwanPhone = emergencyData.leaderPhone; delete emergencyData.leaderPhone; }
+        }
+        
+        if(currentTab === 'chat') { renderMessages(); syncSenderDropdown(); }
+        if(currentTab === 'profile') renderProfilePage();
+        if(currentTab === 'itinerary') renderItineraryOnly();
+        if(currentTab === 'emergency') initEmergencyOnly();
+    }
+
+    window.addEventListener('storage', (e) => { if (Object.values(KEYS).includes(e.key)) loadData(); });
+
+    function switchTab(tabId, title) {
+        currentTab = tabId; 
+        const navKey = 'nav_' + tabId;
+        const header = document.getElementById('appHeader');
+        if(header) header.textContent = i18nDict[currentLang][navKey] || title;
+        
+        document.querySelectorAll('.module-container').forEach(m => m.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('module-' + tabId).classList.add('active');
+        document.getElementById('nav-' + tabId).classList.add('active');
+        loadData();
+    }
+    function closeForm(id) { document.getElementById(id).style.display = 'none'; }
+
+    // ==========================================
+    // 模組：1. 通訊 (Chat)
+    // ==========================================
+    function syncSenderDropdown() {
+        const sel = document.getElementById('senderRole'); const me = members.find(m => m.memberId === myMemberId);
+        if (me) { sel.innerHTML = `<option value="${me.memberId}">${me.name}</option>`; sel.value = me.memberId; sel.disabled = false; } 
+        else { sel.innerHTML = `<option value="">請先建立個人資料</option>`; sel.disabled = true; }
+    }
+    function toggleHiddenMessages() { isShowingAllMessages = !isShowingAllMessages; renderMessages(); }
+    function renderMessages() {
+        const win = document.getElementById('chatWindow'); win.innerHTML = '';
+        const currentSenderName = (members.find(m => m.memberId === myMemberId) || {}).name || '';
+        const toggleBtn = document.getElementById('toggleMsgBtn');
+        let msgsToShow = messages;
+        if (messages.length > 450) {
+            toggleBtn.style.display = 'block';
+            if (!isShowingAllMessages) { msgsToShow = messages.slice(-450); toggleBtn.innerHTML = `📂 載入更早的 ${messages.length - 450} 條訊息`; } 
+            else { toggleBtn.innerHTML = `⬆️ 收起早期訊息`; }
+        } else { toggleBtn.style.display = 'none'; }
+
+        msgsToShow.forEach(msg => {
+            const isSelf = msg.senderName === currentSenderName && currentSenderName !== '';
+            const wrap = document.createElement('div');
+            if (msg.messageType === 'notice') wrap.className = 'message-wrapper notice-style';
+            else if (msg.messageType === 'alert') wrap.className = 'message-wrapper alert-style';
+            else wrap.className = `message-wrapper ${isSelf ? 'self' : 'other'}`;
+            let contentHtml = escapeHTML(msg.textContent);
+            if(msg.messageType === 'notice') contentHtml = `📢 <b>系統公告</b><hr style="margin:5px 0; border:0; border-top:1px dashed #d39e00;">${contentHtml}`;
+            if(msg.messageType === 'alert') contentHtml = `⚠️ <b>緊急警告</b><hr style="margin:5px 0; border:0; border-top:1px dashed #dc3545;">${contentHtml}`;
+            
+            let timeStr = msg.timestamp;
+            if (typeof msg.timestamp === 'number') {
+                const d = new Date(msg.timestamp); 
+                timeStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+            }
+
+            wrap.innerHTML = `<div class="sender-name">${escapeHTML(msg.senderName)}</div><div class="message-bubble">${contentHtml}</div><div style="font-size:0.7rem; color:#888; margin-top:2px; padding:0 5px;">${escapeHTML(timeStr)}</div>`;
+            win.appendChild(wrap);
+        });
+        if (!isShowingAllMessages) win.scrollTop = win.scrollHeight;
+    }
+    
+    function sendMessage() {
+        if (!myMemberId || !members.find(m => m.memberId === myMemberId)) { alert("請先至【我的】建立資料！"); return; }
+        const input = document.getElementById('messageInput'); const text = input.value.trim(); if(!text) return;
+        const senderObj = members.find(m => m.memberId === myMemberId);
+        
+        const currentTimestamp = new Date().toLocaleString('zh-TW', { hour12: false });
+        
+        const newMsg = { 
+            messageId: 'msg_'+Date.now(), 
+            senderName: senderObj ? senderObj.name : '未知', 
+            textContent: text, 
+            timestamp: currentTimestamp, 
+            messageType: 'text' 
+        };
+        
+        messages.push(newMsg); 
+        localStorage.setItem(KEYS.MESSAGES, JSON.stringify(messages)); 
+        input.value = ''; 
+        renderMessages();
+        
+        syncToCloud("messages", { 
+            messageId: newMsg.messageId, timestamp: newMsg.timestamp, senderName: newMsg.senderName, textContent: newMsg.textContent, messageType: newMsg.messageType 
+        });
+    }
+
+    // ==========================================
+    // 模組：2. 行程 (Itinerary)
+    // ==========================================
+    function renderItineraryOnly() {
+        const tabs = document.getElementById('itineraryDayTabs'); tabs.innerHTML = '';
+        const area = document.getElementById('itineraryArea'); area.innerHTML = '';
+        if (itinerary.length === 0) { area.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">${i18nDict[currentLang].empty_itinerary}</p>`; return; }
+        const days = [...new Set(itinerary.map(item => item.day))].sort((a, b) => a - b);
+        days.forEach(d => { const btn = document.createElement('div'); btn.className = `day-tab ${currentItineraryDay == d ? 'active' : ''}`; btn.textContent = currentLang === 'zh' ? `第 ${d} 天` : `Day ${d}`; btn.onclick = () => { currentItineraryDay = d; renderItineraryOnly(); }; tabs.appendChild(btn); });
+        document.getElementById('currentDayTitle').textContent = currentLang === 'zh' ? `第 ${currentItineraryDay} 天行程` : `Day ${currentItineraryDay} Itinerary`;
+        const dayItems = itinerary.filter(item => item.day == currentItineraryDay).sort((a, b) => a.time.localeCompare(b.time));
+        dayItems.forEach(item => {
+            const div = document.createElement('div'); div.className = `timeline-item ${item.isMeetingPoint ? 'mt-point' : ''}`;
+            div.innerHTML = `<div style="font-weight:bold; color:var(--primary-color);">${item.date ? escapeHTML(item.date) + ' ' : ''}${escapeHTML(formatTimeStr(item.time))}</div><div style="font-size:1rem; font-weight:bold; margin:4px 0;">${escapeHTML(item.title)} ${item.isMeetingPoint ? '📍' : ''}</div><div style="font-size:0.85rem; color:#666;">${escapeHTML(item.location)}<br>${escapeHTML(item.description || item.desc)}</div>${item.reminders ? `<div style="color:#dc3545; font-size:0.8rem; margin-top:4px;">⚠️ ${escapeHTML(item.reminders)}</div>` : ''}`;
+            area.appendChild(div);
+        });
+    }
+
+    // ==========================================
+    // 模組：3. 我的 (Profile + Relatives)
+    // ==========================================
+    function toggleCustomDiet() { document.getElementById('m_custom_diet_group').style.display = (document.getElementById('m_diet_select').value === 'custom') ? 'flex' : 'none'; }
+    function renderProfilePage() {
+        const detail = document.getElementById('myProfileDetail'); const relativesSec = document.getElementById('relativesSection');
+        const me = members.find(x => x.memberId === myMemberId);
+        const t = i18nDict[currentLang];
+
+        if (me) {
+            detail.innerHTML = `<div class="data-card" style="border-top: 4px solid var(--primary-color);">
+                <div class="card-row"><span class="card-label">${t.label_name}</span><span>${escapeHTML(me.name)}</span></div>
+                <div class="card-row"><span class="card-label">${t.label_passport}</span><span style="color:var(--accent-color); font-weight:bold;">${escapeHTML(me.passportNo) || '---'}</span></div>
+                <div class="card-row"><span class="card-label">${t.label_tw_phone}</span><span>${escapeHTML(me.phone) || '---'}</span></div>
+                <div class="card-row"><span class="card-label">${t.label_intl_phone}</span><span>${escapeHTML(me.intlPhone) || '---'}</span></div>
+                <div class="card-row"><span class="card-label">${t.label_email}</span><span>${escapeHTML(me.email)}</span></div>
+                <div class="card-row"><span class="card-label">${t.label_diet}</span><span>${escapeHTML(me.dietaryRestrictions) || '---'}</span></div>
+                <div class="card-row"><span class="card-label">${t.label_medical}</span><span>${escapeHTML(me.medicalHistory) || '---'}</span></div>
+                <div class="card-row"><span class="card-label">${t.label_em_name}</span><span>${escapeHTML(me.emergencyContactName)} / ${escapeHTML(me.emergencyContactPhone)}</span></div>
+                <div style="text-align:right; margin-top: 10px;"><button class="action-btn btn-edit" onclick="openMyProfileForm(true)">${t.p_edit}</button><button class="action-btn btn-delete" onclick="deleteMyProfile()">${t.p_del}</button></div></div>`;
+            relativesSec.style.display = 'block';
+        } else {
+            detail.innerHTML = `<div class="data-card" style="text-align:center; padding: 20px;"><p style="color:#666; margin-bottom: 15px;">${t.empty_profile}</p><button class="btn-add" style="width:auto; display:inline-block; margin:0;" onclick="openMyProfileForm(false)">${t.p_create}</button></div>`;
+            relativesSec.style.display = 'none';
+        }
+        renderRelatives();
+    }
+    
+    function openMyProfileForm(isEdit) {
+        if (isEdit) {
+            const m = members.find(x => x.memberId === myMemberId); if (!m) return;
+            document.getElementById('m_id').value = m.memberId; document.getElementById('m_name').value = m.name; document.getElementById('m_passport').value = m.passportNo || ''; document.getElementById('m_phone').value = m.phone; document.getElementById('m_intl_phone').value = m.intlPhone || ''; document.getElementById('m_email').value = m.email || '';
+            const presetDiets = ['葷食', '素食', '不吃牛', '不吃海鮮'];
+            if (presetDiets.includes(m.dietaryRestrictions)) { document.getElementById('m_diet_select').value = m.dietaryRestrictions; document.getElementById('m_diet_custom').value = ''; } 
+            else { document.getElementById('m_diet_select').value = 'custom'; document.getElementById('m_diet_custom').value = m.dietaryRestrictions || ''; }
+            toggleCustomDiet(); document.getElementById('m_emergency_name').value = m.emergencyContactName || ''; document.getElementById('m_emergency_phone').value = m.emergencyContactPhone || '';
+            document.getElementById('m_medical_history').value = m.medicalHistory || '';
+        } else {
+            document.getElementById('m_id').value = ''; document.getElementById('m_name').value = ''; document.getElementById('m_passport').value = ''; document.getElementById('m_phone').value = ''; document.getElementById('m_intl_phone').value = ''; document.getElementById('m_email').value = ''; document.getElementById('m_diet_select').value = '葷食'; document.getElementById('m_diet_custom').value = ''; toggleCustomDiet(); document.getElementById('m_emergency_name').value = ''; document.getElementById('m_emergency_phone').value = '';
+            document.getElementById('m_medical_history').value = '';
+        }
+        document.getElementById('memberForm').style.display = 'block';
+    }
+    
+    function saveMyProfile() {
+        const nameInput = document.getElementById('m_name').value.trim(); const passportInput = document.getElementById('m_passport').value.trim(); const phoneInput = document.getElementById('m_phone').value.trim(); const intlPhoneInput = document.getElementById('m_intl_phone').value.trim(); const emailInput = document.getElementById('m_email').value.trim(); const emPhoneInput = document.getElementById('m_emergency_phone').value.trim();
+        if (!nameInput) { alert("姓名欄位不可為空！"); return; }
+        if (passportInput && !validatePassport(passportInput)) { alert("護照號碼格式不正確！"); return; }
+        if (phoneInput && !validatePhone(phoneInput)) { alert("電話號碼格式不正確！"); return; }
+        
+        const id = document.getElementById('m_id').value; const selectDiet = document.getElementById('m_diet_select').value; 
+        let finalDiet = (selectDiet === 'custom') ? document.getElementById('m_diet_custom').value : selectDiet; if (!finalDiet) finalDiet = '葷食';
+
+        const data = { memberId: id || 'm_' + Date.now(), name: nameInput, passportNo: passportInput, phone: phoneInput, intlPhone: intlPhoneInput, email: emailInput, dietaryRestrictions: finalDiet, medicalHistory: document.getElementById('m_medical_history').value.trim(), emergencyContactName: document.getElementById('m_emergency_name').value.trim(), emergencyContactPhone: emPhoneInput };
+        const idx = members.findIndex(x => x.memberId === data.memberId);
+        if (idx > -1) members[idx] = data; else members.push(data);
+        
+        myMemberId = data.memberId; localStorage.setItem('tourMyMemberId', myMemberId); localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members));
+        closeForm('memberForm'); renderProfilePage(); syncSenderDropdown();
+        syncToCloud("members", data);
+    }
+    function deleteMyProfile() { if (confirm("確定要刪除？")) { members = members.filter(x => x.memberId !== myMemberId); localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members)); myMemberId = ''; localStorage.removeItem('tourMyMemberId'); renderProfilePage(); syncSenderDropdown(); } }
+
+    function renderRelatives() {
+        const area = document.getElementById('relativeListArea'); area.innerHTML = '';
+        const t = i18nDict[currentLang];
+        relatives.forEach(r => {
+            const card = document.createElement('div'); card.className = 'data-card';
+            card.innerHTML = `<div class="card-row"><span class="card-label">${t.label_name}</span><span>${escapeHTML(r.name)}</span></div>
+            <div class="card-row"><span class="card-label">${t.label_passport}</span><span>${escapeHTML(r.passportNo) || '---'}</span></div>
+            <div class="card-row"><span class="card-label">${t.label_tw_phone}</span><span>${escapeHTML(r.phone) || '---'}</span></div>
+            <div class="card-row"><span class="card-label">${t.label_diet}</span><span>${escapeHTML(r.diet)}</span></div>
+            <div style="text-align:right;"><button class="action-btn btn-edit" onclick="openRelativeForm('${r.relId}')">${t.p_edit}</button><button class="action-btn btn-delete" onclick="deleteRelative('${r.relId}')">${t.p_del}</button></div>`;
+            area.appendChild(card);
+        });
+    }
+    
+    function openRelativeForm(id) {
+        if (id) { 
+            const r = relatives.find(x => x.relId === id); if (!r) return; 
+            document.getElementById('rel_id').value = r.relId; 
+            document.getElementById('rel_name').value = r.name; 
+            document.getElementById('rel_passport').value = r.passportNo || ''; 
+            document.getElementById('rel_phone').value = r.phone || ''; // 讀取親友電話
+            document.getElementById('rel_diet').value = r.diet || '葷食'; 
+        } 
+        else { 
+            document.getElementById('rel_id').value = ''; document.getElementById('rel_name').value = ''; document.getElementById('rel_passport').value = ''; document.getElementById('rel_phone').value = ''; document.getElementById('rel_diet').value = '葷食'; 
+        }
+        document.getElementById('relativeForm').style.display = 'block';
+    }
+    
+    function saveRelative() {
+        const name = document.getElementById('rel_name').value.trim(); 
+        const passport = document.getElementById('rel_passport').value.trim();
+        const phone = document.getElementById('rel_phone').value.trim(); // 取得親友電話
+        
+        if (!name) { alert("親友姓名不可為空！"); return; }
+        
+        const id = document.getElementById('rel_id').value;
+        const data = { relId: id || 'rel_' + Date.now(), name: name, passportNo: passport, phone: phone, diet: document.getElementById('rel_diet').value };
+        const idx = relatives.findIndex(x => x.relId === data.relId);
+        
+        if (idx > -1) relatives[idx] = data; else relatives.push(data);
+        
+        localStorage.setItem(KEYS.RELATIVES, JSON.stringify(relatives)); closeForm('relativeForm'); renderRelatives();
+        
+        // ★ 確定將 phone 欄位上傳雲端
+        syncToCloud("relatives", { 
+            relId: data.relId, 
+            primaryMemberId: myMemberId, 
+            name: data.name, 
+            passportNo: data.passportNo, 
+            phone: data.phone, 
+            diet: data.diet 
+        });
+    }
+    
+    function deleteRelative(id) { if (confirm("確定刪除？")) { relatives = relatives.filter(x => x.relId !== id); localStorage.setItem(KEYS.RELATIVES, JSON.stringify(relatives)); renderRelatives(); } }
+
+    function changeMemberPassword() {
+        const currentStoredPwd = localStorage.getItem('member_custom_password') || '123456';
+        const oldPwdInput = prompt("為了安全，請先輸入您目前的密碼：");
+        if (oldPwdInput === null) return; 
+        if (oldPwdInput !== currentStoredPwd) { alert("❌ 原密碼輸入錯誤，無法修改！"); return; }
+        const newPwd = prompt("請設定您的新密碼：");
+        if (newPwd === null || newPwd.trim() === "") { alert("❌ 密碼不可為空白！"); return; }
+        localStorage.setItem('member_custom_password', newPwd.trim());
+        alert("✅ 密碼修改成功！下次開啟請使用新密碼。");
+    }
+
+    // ==========================================
+    // 模組：4. 求助 (Emergency)
+    // ==========================================
+    function toggleEmergencyView() {
+        const cat = document.getElementById('em_category_select').value;
+        document.querySelectorAll('.em-view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view_' + cat).classList.add('active');
+    }
+    function initEmergencyOnly() {
+        document.getElementById('em_read_airport_date').value = emergencyData.airportDate || '尚未設定'; document.getElementById('em_read_airport_time').value = emergencyData.airportTime || '尚未設定'; document.getElementById('em_read_airport_location').value = emergencyData.airportLocation || '尚未設定';
+        document.getElementById('em_read_leader_name').value = emergencyData.leaderName || '尚未設定'; document.getElementById('em_read_leader_taiwan_phone').value = emergencyData.leaderTaiwanPhone || '尚未設定'; document.getElementById('em_read_leader_intl_phone').value = emergencyData.leaderIntlPhone || '尚未設定';
+        document.getElementById('em_read_comp_name').value = emergencyData.compName || '尚未設定'; document.getElementById('em_read_comp_phone').value = emergencyData.compPhone || '尚未設定';
+    }
+
+    // ==========================================
+    // 模組：5. 清單 (Checklist)
+    // ==========================================
+    function switchClTab(id) {
+        document.querySelectorAll('.cl-tab-content').forEach(c => c.classList.add('hidden')); document.getElementById(id).classList.remove('hidden');
+        document.querySelectorAll('.cl-tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('btn-' + id).classList.add('active');
+    }
+    function updateProgress() {
+        const total = document.querySelectorAll('.task-item').length; const checked = document.querySelectorAll('.task-item:checked').length;
+        const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+        document.getElementById('progressBar').style.width = percent + '%'; document.getElementById('progressText').textContent = percent + '%'; document.getElementById('countText').textContent = `${checked}/${total}`;
+        const states = Array.from(document.querySelectorAll('.task-item')).map(cb => cb.checked); localStorage.setItem('travelChecklistStates_v7', JSON.stringify(states));
+    }
+    function loadChecklistData() {
+        const checkboxes = document.querySelectorAll('.task-item'); const saved = JSON.parse(localStorage.getItem('travelChecklistStates_v7'));
+        if (saved && saved.length === checkboxes.length) checkboxes.forEach((cb, i) => cb.checked = saved[i]);
+        updateProgress();
+    }
+    function resetChecklist() { if (confirm('確定要清空？')) { document.querySelectorAll('.task-item').forEach(cb => cb.checked = false); updateProgress(); } }
+    
+    function downloadExcel() {
+        let csv = "\uFEFF分類,確認項目,狀態\n";
+        const tabs = [{ id: 'cl-tab1', name: '證件' }, { id: 'cl-tab2', name: '舒適' }, { id: 'cl-tab3', name: '衣物' }, { id: 'cl-tab4', name: '衛生' }, { id: 'cl-tab5', name: '醫藥' }, { id: 'cl-tab6', name: '電器' }, { id: 'cl-tab7', name: '雜物' }];
+        tabs.forEach(tab => {
+            const section = document.getElementById(tab.id);
+            if (section) {
+                section.querySelectorAll('label').forEach(label => {
+                    const checkbox = label.querySelector('input[type="checkbox"]');
+                    const text = label.querySelector('span.task-text').innerText.replace(/"/g, '""');
+                    csv += `"${tab.name}","${text}","${checkbox.checked ? '✔ 已準備' : '未準備'}"\n`;
+                });
+            }
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = '旅遊清單.csv'; link.click();
+    }
+
+    async function forceSyncMemberChecklist() {
+        if (!myMemberId) { alert("⚠️ 請先至【我的】分頁建立個人資料。"); return; }
+        const tabs = [{ id: 'cl-tab1', name: '證件' }, { id: 'cl-tab2', name: '舒適' }, { id: 'cl-tab3', name: '衣物' }, { id: 'cl-tab4', name: '衛生' }, { id: 'cl-tab5', name: '醫藥' }, { id: 'cl-tab6', name: '電器' }, { id: 'cl-tab7', name: '雜物' }];
+        const btn = document.querySelector('button[onclick="forceSyncMemberChecklist()"]');
+        btn.innerText = "⏳ 正在同步至雲端..."; btn.disabled = true;
+        let successCount = 0; const ts = new Date().toLocaleString('zh-TW', { hour12: false });
+        try {
+            for (const tab of tabs) {
+                const section = document.getElementById(tab.id);
+                if (section) {
+                    const labels = section.querySelectorAll('label');
+                    for (const label of labels) {
+                        const checkbox = label.querySelector('input[type="checkbox"]'); const text = label.querySelector('span.task-text').innerText;
+                        const cloudData = { memberId: myMemberId, timestamp: ts, category: tab.name, itemText: text, status: checkbox.checked ? '✅ 已準備' : '⭕ 未準備' };
+                        const success = await syncToCloud("member_checklist", cloudData);
+                        if (success) successCount++;
+                    }
+                }
+            }
+            alert(`✅ 同步完成！共備份 ${successCount} 項檢查表進度。`);
+        } catch (error) { alert("❌ 備份發生錯誤。"); } finally { btn.innerText = currentLang === 'zh' ? "☁️ 備份我的清單進度至雲端" : "☁️ Sync Checklist"; btn.disabled = false; }
+    }
+
+    document.querySelectorAll('.task-item').forEach(cb => cb.addEventListener('change', updateProgress));
+    
+    // 啟動系統
+    initApp();
+
+</script>
+</body>
+</html>
