@@ -1309,31 +1309,39 @@ function switchTab(tabId, title) {
             airportLocation: emergencyData.airportLocation
         };
 
+
 async function syncSettingsToCloud() {
-        // 蒐集目前所有的設定與緊急聯絡資訊
+        // 從本地儲存抓取緊急聯絡資料
         const emergencyData = JSON.parse(localStorage.getItem(KEYS.EMERGENCY)) || {};
+        
+        // ★ 核心修改：將 emergencyInfo 拆分為多個段落欄位，避免單一欄位過長 ★
         const configData = {
-            timestamp: new Date().toLocaleString('zh-TW', { hour12: false }),
-            leaderName: emergencyData.leaderName || "未設定",
-            emergencyInfo: JSON.stringify(emergencyData),
-            adminPassword: localStorage.getItem('leader_custom_password') || '123456',
-            version: "v33_Fixed"
+            "備份時間": new Date().toLocaleString('zh-TW', { hour12: false }),
+            "領隊姓名": emergencyData.leaderName || "未設定",
+            "領隊電話": emergencyData.leaderPhone || "未設定",
+            "司機姓名": emergencyData.driverName || "未設定",
+            "司機電話": emergencyData.driverPhone || "未設定",
+            "飯店名稱": emergencyData.hotelName || "未設定",
+            "飯店電話": emergencyData.hotelPhone || "未設定",
+            "行程備註": emergencyData.note || "無",
+            "管理密碼": localStorage.getItem('leader_custom_password') || '123456',
+            "系統版本": "v33_Final_Split"
         };
 
-        // UI 反饋
         const btn = event.target;
         const originalText = btn ? btn.innerText : "";
         if (btn && btn.tagName === 'BUTTON') {
-            btn.innerText = "⏳ 正在備份...";
+            btn.innerText = "⏳ 正在拆分欄位並上傳...";
             btn.disabled = true;
         }
 
+        // 使用原本的工具函式將拆分後的資料傳送到 config 分頁
         const success = await syncToCloud("config", configData);
         
         if (success) {
-            alert("✅ 系統設定檔（含緊急資訊與密碼）已成功備份至雲端！");
+            alert("✅ 系統設定已成功拆分欄位並備份至雲端！");
         } else {
-            alert("❌ 備份失敗，請檢查網路連線或 Google Sheet 權限。");
+            alert("❌ 備份失敗，請檢查 Google Sheet 權限。");
         }
 
         if (btn && btn.tagName === 'BUTTON') {
@@ -1341,6 +1349,9 @@ async function syncSettingsToCloud() {
             btn.disabled = false;
         }
     }
+
+
+
 
 
         syncToCloud("emergency", cloudData);
