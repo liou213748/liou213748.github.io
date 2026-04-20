@@ -349,8 +349,7 @@
         <div class="data-card" style="border: 2px solid #6f42c1; background-color: #f8f0ff;">
             <h3 style="margin-top:0; border-bottom:2px solid #6f42c1; padding-bottom:5px; color:#6f42c1;" data-i18n="s_cloud_title">☁️ 系統設定與雲端同步</h3>
             <p style="font-size: 0.85rem; color: #555; margin-bottom: 8px;" data-i18n="s_cloud_desc">同步系統版本、密碼、API狀態等 10 項核心設定至 Google Sheet。</p>
-           <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="syncSettingsToCloud()">
-    備份系統設定檔至雲端
+           <button class="btn-add" style="width:100%; background-color:#6f42c1; font-size: 1rem;" onclick="syncSettingsToCloud()">📤 備份系統設定檔至雲端</button>
 </button>
         </div>
 
@@ -1390,6 +1389,116 @@ async function syncSettingsToCloud() {
             alert(`✅ 同步成功！已傳送 ${count} 筆正確格式資料。`);
         };
     })();
+
+// ==========================================
+    // 1. 每 10 秒自動到 Google Sheet 抓取資料
+    // ==========================================
+    async function autoSyncFromCloud() {
+        if (!API_URL || API_URL.includes("請填入")) return;
+
+        // 抓取團員資料
+        try {
+            const memberRes = await fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "read", targetSheet: "members" })
+            });
+            const mResult = await memberRes.json();
+            if (mResult.status === "success" && mResult.data) {
+                mResult.data.forEach(cloudM => {
+                    const idx = members.findIndex(m => m.memberId === cloudM.memberId);
+                    if (idx > -1) { 
+                        members[idx] = { ...members[idx], ...cloudM }; 
+                    } else { 
+                        members.push(cloudM); 
+                    }
+                });
+                localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members));
+                // 如果目前畫面停留在團員分頁，則更新畫面
+                if (currentTab === 'members') renderMembers();
+            }
+        } catch (e) { console.log("背景同步團員資料中..."); }
+
+        // 抓取通訊訊息
+        try {
+            const chatRes = await fetch(API_URL, {
+                method: "POST",
+                // 注意：這裡的 targetSheet 必須與您 Google Sheet 存訊息的分頁名稱一致 (通常是 messages 或 chat)
+                body: JSON.stringify({ action: "read", targetSheet: "messages" })
+            });
+            const cResult = await chatRes.json();
+            if (cResult.status === "success" && cResult.data) {
+                // 將雲端完整的對話紀錄覆蓋本地
+                localStorage.setItem(KEYS.MESSAGES, JSON.stringify(cResult.data));
+                messages = cResult.data; // 更新全域變數
+                // 如果目前畫面停留在通訊分頁，則更新畫面
+                if (currentTab === 'chat') renderMessages();
+            }
+        } catch (e) { console.log("背景同步通訊訊息中..."); }
+    }
+
+    // 啟動 10 秒定時器
+    setInterval(() => {
+        // 為了節省手機資源與網路，只有在領隊打開「團員」或「通訊」分頁時才執行 10 秒抓取
+        if (currentTab === 'members' || currentTab === 'chat') {
+            autoSyncFromCloud();
+        }
+    }, 10000); 
+
+    // 切換分頁時也立刻觸發一次，不用等 10 秒
+    function switchTab(tabId, title) {
+        currentTab = tabId;
+        document.getElementById('appHeader').textContent = currentLang === 'zh' ? title : (i18nDict['en']['app_title'] || title);
+        document.querySelectorAll('.module-container').forEach(m => m.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('module-' + tabId).classList.add('active');
+        document.getElementById('nav-' + tabId).classList.add('active');
+
+        // 切換到這兩頁時立即抓取
+        if (tabId === 'members' || tabId === 'chat') {
+            autoSyncFromCloud();
+        }
+        loadData();
+    }
+
+
+    // ==========================================
+    // 2. 修復：備份系統設定檔至雲端按鍵功能
+    // ==========================================
+    async function syncSettingsToCloud() {
+        // 蒐集緊急聯絡資訊與自訂密碼
+        const emergencyData = JSON.parse(localStorage.getItem(KEYS.EMERGENCY)) || {};
+        const configData = {
+            timestamp: new Date().toLocaleString('zh-TW', { hour12: false }),
+            leaderName: emergencyData.leaderName || "未設定",
+            emergencyInfo: JSON.stringify(emergencyData),
+            adminPassword: localStorage.getItem('leader_custom_password') || '123456',
+            version: "v33_Final"
+        };
+
+        // 按鈕視覺回饋 (防呆，避免重複點擊)
+        const btn = event.target;
+        const originalText = btn ? btn.innerText : "";
+        if (btn && btn.tagName === 'BUTTON') {
+            btn.innerText = "⏳ 正在備份至雲端...";
+            btn.disabled = true;
+        }
+
+        // 呼叫底層 syncToCloud 將資料寫入 'config' 分頁
+        const success = await syncToCloud("config", configData);
+        
+        if (success) {
+            alert("✅ 系統設定檔（含緊急資訊與密碼）已成功備份至雲端！");
+        } else {
+            alert("❌ 備份失敗，請檢查網路連線或 GAS 網址。");
+        }
+
+        // 恢復按鈕狀態
+        if (btn && btn.tagName === 'BUTTON') {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+
 
     initApp();
 </script>
