@@ -251,8 +251,8 @@
             
             <div class="form-group"><label class="medical-highlight" data-i18n="label_medical">病史：</label><input type="text" id="m_medical" placeholder="如：藥物過敏、慢性病... (自行輸入)"></div>
 
-            <div class="form-group"><label data-i18n="label_em_name">緊急姓名：</label><input type="text" id="m_emergency_name"></div>
-            <div class="form-group"><label data-i18n="label_em_phone">緊急電話：</label><input type="text" id="m_emergency_phone"></div>
+            <div class="form-group"><label data-i18n="label_em_name">緊急連絡姓名：</label><input type="text" id="m_emergency_name"></div>
+            <div class="form-group"><label data-i18n="label_em_phone">緊急連絡電話：</label><input type="text" id="m_emergency_phone"></div>
             <div style="text-align:right"><button class="btn-reset" onclick="closeForm('memberForm')" data-i18n="btn_cancel">取消</button><button class="btn-add" onclick="saveMember()" data-i18n="btn_save">儲存</button></div>
         </div>
         <div id="memberListArea"></div>
@@ -419,8 +419,8 @@
         </div>
 
         <div id="view_em_comp" class="em-view data-card" style="border-top:4px solid var(--alert-border);">
-            <div class="form-group"><label>公司名稱：</label><input type="text" id="em_input_comp_name" placeholder="輸入公司名稱" onblur="saveEmergencyData()"></div>
-            <div class="form-group"><label>公司電話：</label><input type="text" id="em_input_comp_phone" placeholder="輸入公司電話" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>地接公司名稱：</label><input type="text" id="em_input_comp_name" placeholder="輸入公司名稱" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>地接公司電話：</label><input type="text" id="em_input_comp_phone" placeholder="輸入公司電話" onblur="saveEmergencyData()"></div>
         </div>
         
         <div id="view_em_mofa" class="em-view data-card" style="border:none; padding:0; box-shadow:none; background:transparent;">
@@ -455,7 +455,7 @@
 
     const i18nDict = {
         'zh': {
-            'login_title': '🛡️ 領隊版管理系統', 'login_desc': '請輸入管理員密碼以進入工作站\n(預設密碼為: 123456)', 'login_btn': '安全登入',
+            'login_title': '🛡️ 領隊版管理系統', 'login_desc': '請輸入管理員密碼以進入工作站\n(預設密碼為: 6位數密碼)', 'login_btn': '安全登入',
             'app_title': '旅行團內部通訊', 'nav_chat': '通訊', 'nav_members': '團員', 'nav_rollcall': '點名', 'nav_itinerary': '行程', 'nav_finance': '帳務', 'nav_settings': '設定', 'nav_emergency': '求助',
             'chat_title': '💬 旅遊群組', 'chat_load_more': '📂 載入更早的訊息', 'chat_mode': '發送模式：', 'chat_normal': '💬 一般', 'chat_notice': '📢 發送公告', 'chat_alert': '⚠️ 發送警告', 'chat_send': '傳送',
             'member_list': '團員名單', 'member_add': '+ 新增團員', 'member_checklist_status': '📦 檢查團員打包清單狀態', 'member_checklist_load': '📥 載入最新進度', 'member_diet_stats': '🍽️ 團員飲食統計 (含領隊)',
