@@ -686,7 +686,7 @@
         if (isEdit) {
             const m = members.find(x => x.memberId === myMemberId); if (!m) return;
             document.getElementById('m_id').value = m.memberId; document.getElementById('m_name').value = m.name; document.getElementById('m_passport').value = m.passportNo || ''; document.getElementById('m_phone').value = m.phone; document.getElementById('m_intl_phone').value = m.intlPhone || ''; document.getElementById('m_email').value = m.email || '';
-            const presetDiets = ['葷食', '素食', '不吃牛', '不吃海鮮'];
+            const presetDiets = ['葷食', '素食', '不吃牛',  '不吃豬','不吃海鮮'];
             if (presetDiets.includes(m.dietaryRestrictions)) { document.getElementById('m_diet_select').value = m.dietaryRestrictions; document.getElementById('m_diet_custom').value = ''; } 
             else { document.getElementById('m_diet_select').value = 'custom'; document.getElementById('m_diet_custom').value = m.dietaryRestrictions || ''; }
             toggleCustomDiet(); document.getElementById('m_emergency_name').value = m.emergencyContactName || ''; document.getElementById('m_emergency_phone').value = m.emergencyContactPhone || '';
